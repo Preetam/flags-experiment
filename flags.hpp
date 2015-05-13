@@ -1,13 +1,13 @@
+// This header file provides a command line flag handling
+// utility class.
 #ifndef flags_hpp_
 #define flags_hpp_
 
-#include <algorithm>
-#include <cstdio>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <stdexcept>
-#include <string>
+#include <functional> // std::function
+#include <iostream> // std::cout
+#include <map> // std::map
+#include <stdexcept> // exceptions
+#include <string> // std::string
 
 class Flags
 {
@@ -17,23 +17,40 @@ public:
 	{
 	}
 
-	void add_option(std::string, std::string, std::string, std::function<void(std::string, std::string, void*)>);
-	void add_option(std::string, std::string, std::string, std::function<void(std::string, std::string, void*)>, void*);
-	void parse(int argc, char* argv[]);
-	void print_usage();
+	void add_option(std::string, std::string, std::string,
+		std::function<void(std::string, std::string, void*)>);
+
+	void add_option(std::string, std::string, std::string,
+		std::function<void(std::string, std::string, void*)>, void*);
+
+	// parses arguments
+	void parse(int argc, char* argv[]) throw();
+
+	// Prints usage string message to standard out.
+	void print_usage() throw();
 
 private:
+	// program name
 	std::string name;
+
+	// program version
 	std::string version;
 
+	// map from flag to callback
 	std::map<std::string, std::function<void(std::string, std::string, void*)>> funcs;
+
+	// map from flag to data pointer
 	std::map<std::string, void*> ptrs;
+
+	// map from flag to description string
 	std::map<std::pair<std::string, std::string>, std::string> descs;
 };
 
 inline void Flags :: add_option(std::string long_opt,
 	std::string opt, std::string desc,
 	std::function<void(std::string, std::string, void*)> cb) {
+
+	// no data pointer
 	add_option(long_opt, opt, desc, cb, nullptr);
 }
 
@@ -41,6 +58,11 @@ inline void Flags :: add_option(std::string long_opt,
 	std::string opt, std::string desc,
 	std::function<void(std::string, std::string, void*)> cb,
 	void* p) {
+
+	if (opt.length() > 2) {
+		// length includes the hyphen
+		throw std::invalid_argument("short option longer than one character: " + opt);
+	}
 
 	if (funcs.find(long_opt) != funcs.end()) {
 		throw std::invalid_argument("redefined flag: " + long_opt);
@@ -61,9 +83,10 @@ inline void Flags :: add_option(std::string long_opt,
 	descs[std::pair<std::string, std::string>(opt, long_opt)] = desc;
 }
 
-inline void Flags :: print_usage() {
+inline void Flags :: print_usage() throw() {
 	std::cout << name << " version " << version << " usage:" << std::endl << std::endl;
 	for (const auto &i: descs) {
+		// short and long options combined
 		std::string opts = "";
 
 		if (i.first.first != "") {
@@ -76,23 +99,23 @@ inline void Flags :: print_usage() {
 	}
 }
 
-inline void Flags :: parse(int argc, char* argv[]) {
+inline void Flags :: parse(int argc, char* argv[]) throw() {
 	auto is_first = true;
 	std::string arg;
 
 	for (int i = 0; i < argc; i++) {
 		if (!is_first) {
-			auto val = funcs.find(arg);
+			auto cb = funcs.find(arg);
 			if (argv[i][0] == '-') {
 				// Start of a new flag.
-				val->second(arg, "", ptrs.find(arg)->second);
+				cb->second(arg, "", ptrs.find(arg)->second);
 				arg = "";
 				break;
 			}
 
-			if (val != funcs.end()) {
+			if (cb != funcs.end()) {
 				// Call callback
-				val->second(arg, argv[i], ptrs.find(arg)->second);
+				cb->second(arg, argv[i], ptrs.find(arg)->second);
 			}
 
 			is_first = true;
@@ -104,10 +127,10 @@ inline void Flags :: parse(int argc, char* argv[]) {
 		is_first = true;
 		arg = "";
 
-		auto val = funcs.find(argv[i]);
-		if (val != funcs.end()) {
+		auto cb = funcs.find(argv[i]);
+		if (cb != funcs.end()) {
 			if (is_first) {
-				arg = val->first;
+				arg = cb->first;
 				is_first = false;
 				continue;
 			}
@@ -129,9 +152,9 @@ inline void Flags :: parse(int argc, char* argv[]) {
 	}
 
 	if (!is_first) {
-		auto val = funcs.find(arg);
-		if (val != funcs.end()) {
-			val->second(arg, "", ptrs.find(arg)->second);
+		auto cb = funcs.find(arg);
+		if (cb != funcs.end()) {
+			cb->second(arg, "", ptrs.find(arg)->second);
 		}
 	}
 }
