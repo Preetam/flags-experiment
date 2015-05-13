@@ -69,7 +69,7 @@ inline void Flags :: print_usage() {
 		if (i.first.first != "") {
 			opts = i.first.first + ", " + i.first.second;
 		} else {
-			opts = i.first.second;
+			opts = "    " + i.first.second;
 		}
 
 		printf("  %-25s %s\n", opts.c_str(), i.second.c_str());
@@ -84,12 +84,14 @@ inline void Flags :: parse(int argc, char* argv[]) {
 		if (!is_first) {
 			auto val = funcs.find(arg);
 			if (argv[i][0] == '-') {
+				// Start of a new flag.
 				val->second(arg, "", ptrs.find(arg)->second);
 				arg = "";
 				break;
 			}
 
 			if (val != funcs.end()) {
+				// Call callback
 				val->second(arg, argv[i], ptrs.find(arg)->second);
 			}
 
@@ -108,6 +110,20 @@ inline void Flags :: parse(int argc, char* argv[]) {
 				arg = val->first;
 				is_first = false;
 				continue;
+			}
+		} else {
+			// Check for an equals.
+			auto argv_str = std::string(argv[i]);
+			std::size_t pos = argv_str.find("=");
+			if (pos != std::string::npos) {
+				// Found an '='.
+				auto arg = argv_str.substr(0, pos);
+				auto val = argv_str.substr(pos+1);
+
+				auto cb = funcs.find(arg.c_str());
+				if (cb != funcs.end()) {
+					cb->second(arg.c_str(), val, ptrs.find(arg.c_str())->second);
+				}
 			}
 		}
 	}
