@@ -28,7 +28,7 @@ main(int argc, char* argv[]) {
 	int foo = -1;
 	std::string version = "1.0.0";
 
-	Flags flags("main", "1.0.0");
+	Flags flags("main", version);
 	flags.add_option("--help", "-h", "show help", show_help, &flags);
 	flags.add_option("--foo", "", "set foo", set_foo, &foo);
 	flags.add_option("--version", "-v", "show version", show_version, &version);
